@@ -92,6 +92,24 @@ is made available as a compute node.
 - Sets Screen brightness to a lower value
 - Turns keyboard backlight off
 
+## Fan control on Thelio Mira
+
+Thelio boards with a Thelio Io controller map CPU/GPU temperature to fan duty. Most models apply
+their curve directly. `thelio-mira-*` instead uses a quiet-biased `FanController` (ported from
+[easel/thelio-io-windows](https://github.com/easel/thelio-io-windows)), intended for Ryzen CPUs that
+are happy running near 90°C under PBO:
+
+- Curve: 0% at 40°C, 40% at 60°C, 100% at 90°C (`FanCurve::pbo()`).
+- The control temperature is a 5-sample average of the hottest CPU/GPU sensor.
+- Duty rises immediately up to the 40% quiet floor. Above it, duty only climbs, 1 point per second,
+  after demand has held for 10 s: CPU load >= 50% with the average at 90°C or above, or a GPU at
+  70°C or above.
+- Duty falls only after a lower target has held for 10 s, and only for drops of 2 points or more.
+- An instantaneous temperature of 93°C or more forces 100% immediately.
+
+All tunables live in `FanConfig` in `src/fan.rs`. The Windows controller's CPU package power
+trigger is not ported, since AMD package power has no standard hwmon source.
+
 ## Hotplug detection
 
 The dbus signal `HotPlugDetect` is sent when a display is plugged into a port
